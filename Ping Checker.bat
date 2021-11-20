@@ -1,0 +1,1 @@
+@%SystemRoot%\system32\ping.exe -n 9999 www.google.com
