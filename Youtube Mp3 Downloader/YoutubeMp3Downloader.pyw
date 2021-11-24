@@ -49,10 +49,10 @@ def download(url, self):
 
     try:
         yt = YouTube(url=url)
-        print(yt)
         if(yt):
             audio = yt.streams.get_audio_only(subtype='mp4')
 
+            desktop_location = os.path.expanduser("~/Desktop") + "/"
             audio.download(output_path='.', filename='temp.mp3')
             #base, ext = os.path.splitext(out_file)
 
@@ -77,11 +77,12 @@ def download(url, self):
                 if("Album" in yt.metadata.metadata[0]):
                     tag_file['album'] = yt.metadata.metadata[0]["Album"]
                 tag_file.save()
+            os.rename(final_file, desktop_location + final_file)
 
             QMessageBox.question(self, 'Download Completed',
                                  yt.title + " has been successfully downloaded.", QMessageBox.Ok, QMessageBox.Ok)
         else:
-            QMessageBox.question(self, 'Invalid Link',
+            QMessageBox.question(self, 'Invalid Url',
                                  "The youtube link you have given is not valid.", QMessageBox.Ok, QMessageBox.Ok)
 
     except:
