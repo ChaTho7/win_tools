@@ -86,8 +86,9 @@ def download(url, self):
                                  "The youtube link you have given is not valid.", QMessageBox.Ok, QMessageBox.Ok)
 
     except:
-        QMessageBox.question(self, 'Invalid Link',
-                             "The youtube link you have given is not valid.", QMessageBox.Ok, QMessageBox.Ok)
+        error = sys.exc_info()[1]
+        QMessageBox.question(self, 'Error',
+                             str(error), QMessageBox.Ok, QMessageBox.Ok)
         pass
 
 
