@@ -20,6 +20,21 @@ class Worker(QObject):
         self.app.textbox.setText("")
         self.finished.emit()
 
+class Worker1(QObject):
+    def __init__(self,app,stream: Stream, chunk: bytes, bytes_remaining: int):
+        super().__init__()
+        self.app = app
+        self.stream = stream
+        self.chunk = chunk
+        self.bytes_remaining = bytes_remaining
+
+    finished = pyqtSignal()
+    progress = pyqtSignal(int)
+
+    def run(self):
+        self.app.on_progress(stream = self.stream, chunk = self.chunk, bytes_remaining = self.bytes_remaining)
+        self.finished.emit()
+
 
 class App(QMainWindow):
     def __init__(self):
@@ -30,12 +45,11 @@ class App(QMainWindow):
         self.top = 600
         self.width = 420
         self.height = 170
-        
-        self.setFixedSize(self.width, self.height)
         self.initUI()
 
     def initUI(self):
         self.setWindowTitle(self.title)
+        self.setFixedSize(self.width, self.height)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
         self.textbox = QLineEdit(self)
@@ -67,7 +81,7 @@ class App(QMainWindow):
         else:
             QMessageBox.question(self, 'Error',
                                  "You have to input a link", QMessageBox.Ok, QMessageBox.Ok)
-
+#https://youtu.be/v3dclL2grbs
     def on_progress(
         self, stream: Stream, chunk: bytes, bytes_remaining: int
     ) -> None:
@@ -76,9 +90,20 @@ class App(QMainWindow):
         progress_value = math.trunc(float(bytes_received / filesize) * 100)
         self.progress.setValue(progress_value)
 
+    def thread1(self, stream: Stream, chunk: bytes, bytes_remaining: int):
+        self.thread1 = QThread()
+        self.worker1 = Worker1(app=self, stream=stream, chunk=chunk, bytes_remaining=bytes_remaining)
+
+        self.worker1.moveToThread(self.thread)
+        self.thread1.started.connect(self.worker.run)
+        self.worker1.finished.connect(self.thread.quit)
+        self.worker1.finished.connect(self.worker.deleteLater)
+        self.thread1.finished.connect(self.thread.deleteLater)
+        self.thread1.start()
+
     def download(self, url):
         try:
-            yt = YouTube(url=url,on_progress_callback=self.on_progress)
+            yt = YouTube(url=url,on_progress_callback=self.thread1)
             if(yt):
                 video = yt.streams.get_highest_resolution()
 

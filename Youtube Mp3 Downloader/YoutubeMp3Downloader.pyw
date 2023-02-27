@@ -1,7 +1,8 @@
 import sys
 from PyQt5.QtWidgets import QMainWindow, QApplication, QPushButton, QLineEdit, QMessageBox
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import pyqtSlot, QRect
+from PyQt5.QtSvg import QSvgWidget, QSvgRenderer
 
 from pytube import YouTube
 import os
@@ -18,6 +19,8 @@ class App(QMainWindow):
         self.top = 600
         self.width = 420
         self.height = 140
+        
+        self.setFixedSize(self.width, self.height)
         self.initUI()
 
     def initUI(self):
@@ -30,6 +33,10 @@ class App(QMainWindow):
 
         self.button = QPushButton('Download', self)
         self.button.move(150, 80)
+
+        self.svgWidget = QSvgWidget(self)
+        self.svgWidget.load("status.svg")
+        self.svgWidget.setGeometry(QRect(300,80,30,30))
 
         self.button.clicked.connect(self.on_click)
         self.show()
@@ -51,7 +58,6 @@ def download(url, self):
         yt = YouTube(url=url)
         if(yt):
             audio = yt.streams.get_audio_only(subtype='mp4')
-
             desktop_location = os.path.expanduser("~/Desktop") + "/"
             audio.download(output_path='.', filename='temp.mp3')
             #base, ext = os.path.splitext(out_file)
@@ -60,13 +66,11 @@ def download(url, self):
             invalid = '<>:"/\|?*'
             for char in invalid:
                 final_file = final_file.replace(char, '')
-
             stream = ffmpeg.input('temp.mp3')
             stream = ffmpeg.output(stream, final_file,
                                    acodec="libmp3lame", audio_bitrate=192000)
             ffmpeg.run(stream)
             os.remove("temp.mp3")
-
             yt.metadata.metadata.append(1)
             if(yt.metadata.metadata != [1]):
                 tag_file = music_tag.load_file(final_file)

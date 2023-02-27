@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QPushButton, QLineEdit, Q
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QThread, QObject, pyqtSignal
 
-from pytube import YouTube, Stream
+from pytube import Stream, Playlist
 import os
 import math
 
@@ -78,23 +78,24 @@ class App(QMainWindow):
 
     def download(self, url):
         try:
-            yt = YouTube(url=url,on_progress_callback=self.on_progress)
-            if(yt):
-                video = yt.streams.get_highest_resolution()
+            playlist = Playlist(url)
+            if(playlist):
+                for p_video in playlist.videos:
+                    p_video.register_on_progress_callback(self.on_progress)
+                    video = p_video.streams.get_highest_resolution()
 
-                desktop_location = os.path.expanduser("~/Desktop") + "/"
-                video.download(output_path='.', filename='temp.mp4')
-                #base, ext = os.path.splitext(out_file)
+                    desktop_location = os.path.expanduser("~/Desktop") + "/"
+                    video.download(output_path='.', filename='temp.mp4')
+                    #base, ext = os.path.splitext(out_file)
 
-                final_file = rf"{video.title}" + ".mp4"
-                invalid = '<>:"/\|?*'
-                for char in invalid:
-                    final_file = final_file.replace(char, '')
+                    final_file = rf"{p_video.title}" + ".mp4"
+                    invalid = '<>:"/\|?*'
+                    for char in invalid:
+                        final_file = final_file.replace(char, '')
 
-                os.rename("temp.mp4", desktop_location + final_file)
+                    os.rename("temp.mp4", desktop_location + final_file)
 
-                QMessageBox.question(self, 'Download Completed',
-                                    yt.title + " has been successfully downloaded.", QMessageBox.Ok, QMessageBox.Ok)
+                    print(p_video.title + " has been successfully downloaded.")
             else:
                 QMessageBox.question(self, 'Invalid Url',
                                     "The youtube link you have given is not valid.", QMessageBox.Ok, QMessageBox.Ok)

@@ -7,7 +7,7 @@ def download():
     instance = instaloader.Instaloader()
     instance.login(user="",passwd="")
 
-    link = ""
+    link = "https://www.instagram.com/..."
     spiltted_link = link.split("/")
     profile_name = spiltted_link[4]
     story_id = spiltted_link[5]
