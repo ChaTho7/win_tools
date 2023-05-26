@@ -10,9 +10,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import pyqtSlot, QRect
 from PyQt5.QtSvg import QSvgWidget, QSvgRenderer
 
-from pytube import YouTube
-import os
-import ffmpeg
+import yt_dlp, os
 
 
 class App(QMainWindow):
@@ -64,44 +62,31 @@ class App(QMainWindow):
 
 def download(url, self):
     try:
-        yt = YouTube(url=url)
-        if yt:
-            audio = (
-                yt.streams.get_by_itag(22)
-                or yt.streams.get_by_itag(18)
-                or yt.streams.get_audio_only()
-            )
-            desktop_location = os.path.expanduser("~/Desktop") + "/"
-            audio.download(output_path=".", filename="temp.mp3")
-            # base, ext = os.path.splitext(out_file)
+        outtmpl = ""
+        with yt_dlp.YoutubeDL() as ydl:
+            info = ydl.extract_info(url, download=False)
+            video_title = info.get("title")
 
-            final_file = rf"{audio.title}" + ".mp3"
+            desktop_location = os.path.expanduser("~/Desktop")
             invalid = '<>:"/\|?*'
             for char in invalid:
-                final_file = final_file.replace(char, "")
-            stream = ffmpeg.input("temp.mp3")
-            stream = ffmpeg.output(
-                stream, final_file, acodec="libmp3lame", audio_bitrate=192000
-            )
-            ffmpeg.run(stream)
-            os.remove("temp.mp3")
-            os.rename(final_file, desktop_location + final_file)
+                video_title = video_title.replace(char, "")
 
-            QMessageBox.question(
-                self,
-                "Download Completed",
-                yt.title + " has been successfully downloaded.",
-                QMessageBox.Ok,
-                QMessageBox.Ok,
-            )
-        else:
-            QMessageBox.question(
-                self,
-                "Invalid Url",
-                "The youtube link you have given is not valid.",
-                QMessageBox.Ok,
-                QMessageBox.Ok,
-            )
+            outtmpl = f"{desktop_location}/{video_title}.%(ext)s"
+
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "postprocessors": [
+                {
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": "mp3",
+                    "preferredquality": "192",
+                }
+            ],
+            "outtmpl": outtmpl,
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
 
     except:
         error = sys.exc_info()[1]
