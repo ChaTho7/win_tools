@@ -13,6 +13,7 @@ extensions = [
     ".docm",
     ".xls",
     ".xlsm",
+    ".odt",
     ".pptx",
     ".ppt",
     ".ppsx",
@@ -52,7 +53,9 @@ if mode == "file":
     parent_path, file_name = os.path.split(file_path)
     base_name, extension = os.path.splitext(file_name)
 
-    convert_to_pdf(file_path, parent_path)
+    if extension in extensions:
+        convert_to_pdf(file_path, parent_path)
+        
 else:
     working_path = sys.argv[1]
 

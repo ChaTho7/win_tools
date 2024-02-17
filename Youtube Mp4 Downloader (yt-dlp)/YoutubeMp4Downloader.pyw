@@ -1,4 +1,3 @@
-import sys
 from PyQt5.QtWidgets import (
     QMainWindow,
     QApplication,
@@ -10,13 +9,13 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import pyqtSlot, QRect
 from PyQt5.QtSvg import QSvgWidget, QSvgRenderer
 
-import yt_dlp, os
+import yt_dlp, os, sys
 
 
 class App(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.title = "Youtube Mp3 Downloader"
+        self.title = "Youtube Mp4 Downloader"
         self.setWindowIcon(QIcon("logo.ico"))
         self.left = 1000
         self.top = 600
@@ -60,11 +59,36 @@ class App(QMainWindow):
         self.textbox.setText("")
 
 
+def progress_hook(d):
+    print("--------------------------")
+    print(d["status"])
+    if d["status"] == "finished":
+        print("Done downloading")
+    if d["status"] == "downloading":
+        print(d["filename"], d["_percent_str"], d["_eta_str"])
+
+
 def download(url, self):
     try:
         outtmpl = ""
-        with yt_dlp.YoutubeDL() as ydl:
+        video_title = ""
+        null_device = open(os.devnull, "w")
+        with yt_dlp.YoutubeDL(
+            params={
+                "noplaylist": True,
+            }
+        ) as ydl:
+            stdout_orig = sys.stdout
+            stderr_orig = sys.stderr
+
+            sys.stdout = null_device
+            sys.stderr = null_device
+
             info = ydl.extract_info(url, download=False)
+
+            sys.stdout = stdout_orig
+            sys.stderr = stderr_orig
+
             video_title = info.get("title")
 
             desktop_location = os.path.expanduser("~/Desktop")
@@ -75,18 +99,31 @@ def download(url, self):
             outtmpl = f"{desktop_location}/{video_title}.%(ext)s"
 
         ydl_opts = {
-            "format": "bestaudio/best",
-            "postprocessors": [
-                {
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": "mp3",
-                    "preferredquality": "192",
-                }
-            ],
+            "format": f"bestvideo[height<=1080][ext=mp4]+bestaudio/best[height<=1080]/best",
             "outtmpl": outtmpl,
+            "progress_hooks": [progress_hook],
+            "noplaylist": True,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            stdout_orig = sys.stdout
+            stderr_orig = sys.stderr
+
+            sys.stdout = null_device
+            sys.stderr = null_device
+
             ydl.download([url])
+
+            sys.stdout = stdout_orig
+            sys.stderr = stderr_orig
+
+        null_device.close()
+        QMessageBox.question(
+            self,
+            "Download Completed",
+            video_title + " has been successfully downloaded.",
+            QMessageBox.Ok,
+            QMessageBox.Ok,
+        )
 
     except:
         error = sys.exc_info()[1]
