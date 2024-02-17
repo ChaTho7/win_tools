@@ -4,7 +4,10 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QLineEdit,
     QMessageBox,
-    QInputDialog
+    QInputDialog,
+    QCheckBox,
+    QDialog,
+    QVBoxLayout
 )
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import pyqtSlot, QRect
@@ -60,10 +63,36 @@ class App(QMainWindow):
         self.textbox.setText("")
 
 
+class CheckboxDialog(QDialog):
+    def __init__(self, parent=None):
+        super(CheckboxDialog, self).__init__(parent)
+        self.setWindowTitle("Thumbnail")
+        self.height = 70
+
+        layout = QVBoxLayout()
+
+        self.checkbox = QCheckBox("Include Thumbnail")
+        layout.addWidget(self.checkbox)
+
+        self.apply_button = QPushButton("Apply")
+        self.apply_button.clicked.connect(self.apply_clicked)
+        layout.addWidget(self.apply_button)
+
+        self.setLayout(layout)
+
+    def apply_clicked(self):
+        self.accept()
+
+    def get_checkbox_state(self):
+        return self.checkbox.isChecked()
+
+
 def download(url, self):
     try:
         outtmpl = ""
         video_title = ""
+        video_thumbnail_url = ""
+        api_result = {}
         null_device = open(os.devnull, "w")
         with yt_dlp.YoutubeDL(
             params={
@@ -82,6 +111,7 @@ def download(url, self):
             sys.stderr = stderr_orig
 
             video_title = info.get("title")
+            video_thumbnail_url = info["thumbnail"]
 
             desktop_location = os.path.expanduser("~/Desktop")
             video_title = fix_title(video_title)
@@ -121,12 +151,22 @@ def download(url, self):
             QMessageBox.Ok,
         )
 
-        api_result = get_metadata.get_metadata_from_api(video_title)
+        try:
+            api_result = get_metadata.get_metadata_from_api(video_title)
+        except:
+            error = sys.exc_info()[1]
+            QMessageBox.question(self, "Error", str(
+                error), QMessageBox.Ok, QMessageBox.Ok)
+            pass
 
-        metadata_title = set_title_metadata(self, api_result["title"])
-        metadata_artist = set_artist_metadata(self, api_result["artist"])
+        metadata_title = set_title_metadata(
+            self, api_result.get("title", None))
+        metadata_artist = set_artist_metadata(
+            self, api_result.get("artist", None))
+        is_add_thumbnial = set_thumbnail(self)
 
-        metadata_result = edit_metadata.edit(f"{desktop_location}/{video_title}.mp3",metadata_title,metadata_artist)
+        metadata_result = edit_metadata.edit(
+            f"{desktop_location}/{video_title}.mp3", metadata_title, metadata_artist, video_thumbnail_url if (is_add_thumbnial and video_thumbnail_url is not None) else None)
 
         if metadata_result is not None:
             QMessageBox.question(
@@ -138,25 +178,36 @@ def download(url, self):
             )
     except:
         error = sys.exc_info()[1]
-        QMessageBox.question(self, "Error", str(error), QMessageBox.Ok, QMessageBox.Ok)
+        QMessageBox.question(self, "Error", str(
+            error), QMessageBox.Ok, QMessageBox.Ok)
         pass
 
 
 def set_title_metadata(self, title_from_api):
     title, done = QInputDialog.getText(
-             self, 'Title Input', 'Enter the title:', text=title_from_api)
+        self, 'Title Input', 'Enter the title:', text=title_from_api)
     if done:
         return title
     else:
         return None
 
+
 def set_artist_metadata(self, artist_from_api):
     artist, done = QInputDialog.getText(
-             self, 'Artist Input', 'Enter the artist:', text=artist_from_api)
+        self, 'Artist Input', 'Enter the artist:', text=artist_from_api)
     if done:
         return artist
     else:
         return None
+
+
+def set_thumbnail(self):
+    dialog = CheckboxDialog(self)
+    if dialog.exec_() == QDialog.Accepted:
+        thumbnail_option = dialog.get_checkbox_state()
+        return thumbnail_option
+    return False
+
 
 def fix_title(video_title):
     invalid_chars = '<>:"/\|?*'
@@ -183,6 +234,7 @@ def fix_title(video_title):
         video_title = video_title.replace(block, "")
 
     return str(video_title).strip()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
